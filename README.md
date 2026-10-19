@@ -2,8 +2,6 @@
 
 ![Java](https://img.shields.io/badge/Java-8%2B-007396?logo=openjdk&logoColor=white)
 ![Build](https://img.shields.io/badge/Build-javac-blue)
-![Paradigm](https://img.shields.io/badge/Paradigm-OOP-6f42c1)
-![Domain](https://img.shields.io/badge/Domain-Bioinformatics-0b7285)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./License)
 
 An object-oriented Java project that models a bioinformatics team working on **genome alignments** of HIV sequences. It loads a set of aligned genomes from a FASTA file, scores them against a reference, lets different team roles edit and manage the alignments under access control, and can back up and restore the whole team state.
