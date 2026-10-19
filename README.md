@@ -1,56 +1,83 @@
 # Genome Alignment
 
-A Java program for genome sequence alignment, with controlled user access management and back-up functionality.
+![Java](https://img.shields.io/badge/Java-8%2B-007396?logo=openjdk&logoColor=white)
+![Build](https://img.shields.io/badge/Build-javac-blue)
+![Paradigm](https://img.shields.io/badge/Paradigm-OOP-6f42c1)
+![Domain](https://img.shields.io/badge/Domain-Bioinformatics-0b7285)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](./License)
 
-Users authenticate against a team file, run alignments on a gene sequence in FASTA format, and get their results (an alignment and a score) written to per-user output files. Session data can be backed up to a plain-text file.
+An object-oriented Java project that models a bioinformatics team working on **genome alignments** of HIV sequences. It loads a set of aligned genomes from a FASTA file, scores them against a reference, lets different team roles edit and manage the alignments under access control, and can back up and restore the whole team state.
 
-> **Note:** sections marked `TODO` need details only you know (exact algorithm, class names, build setup). Fill them in or delete them before publishing.
+The project was built for an *Introduction to Object-Oriented Programming* course project (2022); the full report is in [`Java Project - Marco Salmistraro.pdf`](./Java%20Project%20-%20Marco%20Salmistraro.pdf).
 
 ---
 
 ## Table of Contents
 
 - [Features](#features)
+- [How It Works](#how-it-works)
 - [Repository Structure](#repository-structure)
 - [Requirements](#requirements)
 - [Configuration](#configuration)
-- [Getting Started](#getting-started)
-- [Usage](#usage)
+- [Build and Run](#build-and-run)
 - [Output Files](#output-files)
 - [Documentation](#documentation)
 - [Author](#author)
+- [License](#license)
 
 ---
 
 ## Features
 
-- **Genome alignment**: aligns genome sequences read from a FASTA file (the default dataset is an HIV sequence, `data/hiv.fasta`).
-- **Alignment scoring**: computes an alignment score for each run.
-- **User access management**: access is restricted to the users listed in a team file (`data/team.txt`).
-- **Per-user results**: each user's alignment and score are saved to their own files.
-- **Back-up**: program data can be saved to `backup.txt`.
-- **External configuration**: input file locations are set in `config.properties`, so no recompilation is needed to change datasets.
+- **Genome library**: genomes are read from a FASTA file (default dataset: an HIV sequence set, `data/hiv.fasta`) into an insertion-ordered id → sequence map.
+- **Two alignment views**:
+  - **Standard** (`StdAlignment`) — the genomes as stored.
+  - **SNP-style** (`SNiPAlignment`) — each genome is printed relative to the reference: a `.` where a position matches the reference and the differing nucleotide otherwise.
+- **Alignment scoring**: a similarity measure over the whole library. For every genome, the score counts the nucleotide positions that differ from a reference sequence (by default the first genome in the file), summed across all genomes (a Hamming-distance-to-reference total).
+- **Alignment editing**: search for a sub-sequence, replace sequences within a genome or across the whole library, and add, remove or replace genomes.
+- **Role-based access control**: operations are tied to team roles, and privileged actions performed by someone who does not belong to the team raise an exception (see [How It Works](#how-it-works)).
+- **Back-up and restore**: the full team state can be written to a plain-text file and restored from it.
+- **External configuration**: input file locations are set in `config.properties`, so the dataset can be changed without recompiling.
 
-`TODO`: name the alignment algorithm (e.g. global / local, scoring scheme: match, mismatch, gap penalties).
+## How It Works
+
+The program is organised around a `Team` built from a team file and a gene (FASTA) file, with members in distinct roles:
+
+| Role | Responsibilities |
+|---|---|
+| **Team Lead** (`TeamLead`) | Reads the repository's optimal alignment and score, overwrites or promotes a bioinformatician's alignment, and exports team reports/data. Must belong to the team. |
+| **Bioinformatician** (`BioInfo`) | Owns a personal `StdAlignment`, can edit it (search/replace/add/remove genomes), inspect its score, and export their own report/data. |
+| **Technical Support** (`TechnicalSupport`) | Performs back-up, restore and clear operations on the team. Must belong to the team. |
+| **Repository** (`Repository`) | Holds the optimal alignment plus each user's alignment and the associated scores. |
+
+Access control is enforced in code: when a `TeamLead` or `TechnicalSupport` who is not part of the team attempts a privileged operation (overwrite, promote, back-up, export), the call raises an exception rather than performing the action.
+
+The `Alignment` abstract class implements a `Functional` interface and provides the shared genome library and scoring logic; `StdAlignment` and `SNiPAlignment` are its concrete subclasses.
 
 ## Repository Structure
 
 ```
 genome_alignment/
-├── data/                              # Input data (team list, FASTA gene file)
+├── data/                              # Input data
+│   ├── hiv.fasta                      #   HIV genome sequences (FASTA)
+│   └── team.txt                       #   Team members
 ├── src/                               # Java source code
-├── config.properties                  # Paths to input files
-├── backup.txt                         # Back-up output
+│   ├── Main/Main.java                 #   Entry point (scripted demonstration)
+│   ├── Alignments/                    #   Alignment, StdAlignment, SNiPAlignment, Functional
+│   └── Team/                          #   Member, TeamLead, BioInfo, TechnicalSupport, Team, Repository
+├── config.properties                  # Paths to the input files
+├── backup.txt                         # Example back-up output
 ├── <User>.alignment.txt               # Alignment result for a given user
 ├── <User>.score.txt                   # Alignment score for a given user
 ├── Java Project - Marco Salmistraro.pdf   # Project report
+├── License
 └── .gitignore
 ```
 
 ## Requirements
 
-- Java Development Kit (JDK) 8 or later (`TODO`: confirm the minimum version you built with)
-- No external libraries are required (`TODO`: confirm, or list any dependencies)
+- **JDK 8 or later** (the code uses try-with-resources, generics and `java.util.Properties`).
+- **No external libraries** — only the Java standard library (`java.io`, `java.nio`, `java.util`).
 
 Check your installation:
 
@@ -68,48 +95,32 @@ teamFile = data/team.txt
 geneFile = data/hiv.fasta
 ```
 
-| Property   | Description                                         |
-|------------|-----------------------------------------------------|
-| `teamFile` | File listing the users allowed to access the program |
-| `geneFile` | FASTA file containing the genome sequence(s)        |
+| Property   | Description                                          |
+|------------|------------------------------------------------------|
+| `teamFile` | File listing the team members                        |
+| `geneFile` | FASTA file containing the genome sequences           |
 
-Paths are relative to the directory the program is run from, so run it from the project root.
+Paths are relative to the directory the program is run from, so run it from the project root. To use a different dataset, point `geneFile` at another FASTA file (one `>id` line followed by one sequence line per genome, all sequences the same length).
 
-To use a different dataset, change `geneFile` to point at another FASTA file.
+## Build and Run
 
-## Getting Started
-
-Clone the repository:
+The sources are organised into packages (`Main`, `Alignments`, `Team`), and the entry point is `Main.Main`.
 
 ```bash
 git clone https://github.com/marcosalmistraro/genome_alignment.git
 cd genome_alignment
-```
 
-Compile (`TODO`: adjust if the sources use packages or a different layout):
-
-```bash
+# Compile all sources into out/
 mkdir -p out
 javac -d out $(find src -name "*.java")
+
+# Run from the project root so config.properties and data/ are found
+java -cp out Main.Main
 ```
 
-Run (`TODO`: replace `Main` with the actual entry-point class, including its package if any):
+Alternatively, open the project in an IDE such as IntelliJ IDEA or Eclipse, mark `src` as the source root, and run `Main`.
 
-```bash
-java -cp out Main
-```
-
-Alternatively, open the project in an IDE such as IntelliJ IDEA or Eclipse, mark `src` as the source root, and run the main class from there.
-
-## Usage
-
-1. Start the program from the project root so `config.properties` and `data/` are found.
-2. Log in as a user listed in `data/team.txt`. Users not in the team file are denied access.
-3. Run the alignment on the gene sequence loaded from `geneFile`.
-4. Review the results in the generated files (see below).
-5. Use the back-up option to save the current data to `backup.txt`.
-
-`TODO`: add a short example session (menu options and sample output) once you've confirmed the exact prompts.
+Running `Main` executes a scripted demonstration: it builds the team, prints the members and the repository score, then walks through bioinformatician edits, Team Lead overwrite/promote actions, back-up/restore, clearing the repository, and report/data export — including the calls that are expected to raise exceptions when attempted by non-members.
 
 ## Output Files
 
@@ -120,9 +131,7 @@ For each user, the program writes two files in the project root:
 | `<User>.alignment.txt`   | The resulting sequence alignment          |
 | `<User>.score.txt`       | The alignment score, as a single integer  |
 
-The repository includes sample outputs for two users, `MarcJanssens` and `JozefGroenewegen`. For example, `MarcJanssens.score.txt` contains a single score value (`38023`).
-
-`backup.txt` holds the back-up data. In the committed example it is a large text file (around 400 lines, close to 1 MB).
+The repository includes sample outputs for two users, `MarcJanssens` and `JozefGroenewegen` (for example, `MarcJanssens.score.txt` contains `38023`). `backup.txt` holds an example back-up of the team state.
 
 ## Documentation
 
@@ -135,4 +144,4 @@ GitHub: [@marcosalmistraro](https://github.com/marcosalmistraro)
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
+This project is licensed under the MIT License. See the [License](./License) file for details.
